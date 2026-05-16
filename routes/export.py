@@ -209,6 +209,19 @@ def export_pdf():
                 self.set_font('helvetica', 'I', 8)
                 self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
+        def clean_text(text):
+            if not text: return ""
+            # Replace common special characters that crash fpdf2 with standard ones
+            replacements = {
+                '\u2013': '-', '\u2014': '-', '\u2018': "'", '\u2019': "'",
+                '\u201c': '"', '\u201d': '"', '\u2022': '*', '\u00a7': 'Sect.',
+                '\u2122': '(TM)', '\u00ae': '(R)', '\u00a9': '(C)'
+            }
+            for char, rep in replacements.items():
+                text = text.replace(char, rep)
+            # Encode and decode as latin-1 to strip any other unknown characters
+            return text.encode('latin-1', 'replace').decode('latin-1')
+
         pdf = PDF()
         pdf.add_page()
         pdf.set_font("helvetica", size=10)
@@ -216,10 +229,10 @@ def export_pdf():
         summary = data.get('summary', {})
         
         pdf.set_font("helvetica", 'B', 10)
-        pdf.cell(0, 10, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", 0, 1)
+        pdf.cell(0, 10, clean_text(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"), 0, 1)
         
         if summary.get('document_type'):
-            pdf.cell(0, 10, f"Document Type: {summary['document_type']}", 0, 1)
+            pdf.cell(0, 10, clean_text(f"Document Type: {summary['document_type']}"), 0, 1)
         
         pdf.ln(5)
 
@@ -228,7 +241,7 @@ def export_pdf():
             pdf.set_font("helvetica", 'B', 12)
             pdf.cell(0, 10, "Executive Summary", 0, 1)
             pdf.set_font("helvetica", size=10)
-            pdf.multi_cell(0, 5, summary['short_summary'])
+            pdf.multi_cell(0, 5, clean_text(summary['short_summary']))
             pdf.ln(5)
 
         # Detailed Summary
@@ -236,7 +249,7 @@ def export_pdf():
             pdf.set_font("helvetica", 'B', 12)
             pdf.cell(0, 10, "Detailed Summary", 0, 1)
             pdf.set_font("helvetica", size=10)
-            pdf.multi_cell(0, 5, summary['detailed_summary'])
+            pdf.multi_cell(0, 5, clean_text(summary['detailed_summary']))
             pdf.ln(5)
 
         # Key Legal Points
@@ -245,7 +258,7 @@ def export_pdf():
             pdf.cell(0, 10, "Key Legal Points", 0, 1)
             pdf.set_font("helvetica", size=10)
             for point in summary['key_legal_points']:
-                pdf.multi_cell(0, 5, f"• {point}")
+                pdf.multi_cell(0, 5, clean_text(f"• {point}"))
             pdf.ln(5)
 
         # Obligations
@@ -254,7 +267,7 @@ def export_pdf():
             pdf.cell(0, 10, "Obligations", 0, 1)
             pdf.set_font("helvetica", size=10)
             for ob in summary['obligations']:
-                pdf.multi_cell(0, 5, f"• {ob}")
+                pdf.multi_cell(0, 5, clean_text(f"• {ob}"))
             pdf.ln(5)
 
         # Risk Analysis
@@ -265,9 +278,9 @@ def export_pdf():
             for risk in summary['legal_risks']:
                 level = risk.get('level', '').upper()
                 pdf.set_font("helvetica", 'B', 10)
-                pdf.cell(0, 5, f"[{level}] {risk.get('risk', '')}", 0, 1)
+                pdf.cell(0, 5, clean_text(f"[{level}] {risk.get('risk', '')}"), 0, 1)
                 pdf.set_font("helvetica", size=10)
-                pdf.multi_cell(0, 5, risk.get('explanation', ''))
+                pdf.multi_cell(0, 5, clean_text(risk.get('explanation', '')))
                 pdf.ln(2)
             pdf.ln(5)
 
@@ -279,9 +292,9 @@ def export_pdf():
             for name, text in clauses.items():
                 if text:
                     pdf.set_font("helvetica", 'B', 11)
-                    pdf.cell(0, 8, name.replace('_', ' ').title(), 0, 1)
+                    pdf.cell(0, 8, clean_text(name.replace('_', ' ').title()), 0, 1)
                     pdf.set_font("helvetica", size=10)
-                    pdf.multi_cell(0, 5, text)
+                    pdf.multi_cell(0, 5, clean_text(text))
                     pdf.ln(3)
 
         buf = io.BytesIO(pdf.output())
