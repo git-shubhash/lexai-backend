@@ -104,3 +104,31 @@ def upload_multiple():
             results.append({'filename': file.filename, 'error': str(e)})
 
     return jsonify({'success': True, 'files': results})
+
+
+@upload_bp.route('/clear-uploads', methods=['POST'])
+def clear_uploads():
+    """Delete all files in the uploads folder"""
+    try:
+        upload_folder = current_app.config.get('UPLOAD_FOLDER', 'uploads')
+        if not os.path.exists(upload_folder):
+            return jsonify({'success': True, 'message': 'Uploads folder does not exist'})
+
+        count = 0
+        for filename in os.listdir(upload_folder):
+            file_path = os.path.join(upload_folder, filename)
+            try:
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)
+                    count += 1
+            except Exception as e:
+                logger.error(f"Failed to delete {file_path}: {e}")
+
+        logger.info(f"Cleaned up {count} files from uploads folder")
+        return jsonify({
+            'success': True,
+            'message': f'Deleted {count} files from the server'
+        })
+    except Exception as e:
+        logger.error(f"Cleanup error: {e}")
+        return jsonify({'error': str(e)}), 500

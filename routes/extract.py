@@ -38,6 +38,13 @@ def extract():
             filename = os.path.basename(target_file)
             result = extract_text(file_bytes, filename)
 
+            # Auto-cleanup: delete file after extraction for privacy
+            try:
+                os.remove(target_file)
+                logger.info(f"Auto-deleted {target_file} after extraction")
+            except Exception as cleanup_err:
+                logger.warning(f"Failed to auto-delete {target_file}: {cleanup_err}")
+
             logger.info(f"Extracted text from {file_id}: {result.get('char_count', 0)} chars")
             return jsonify(result)
 
