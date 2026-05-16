@@ -104,8 +104,12 @@ def extract_text_from_txt(file_bytes: bytes) -> Tuple[str, str]:
 def extract_text_via_ocr(file_bytes: bytes, is_pdf: bool = False) -> Tuple[str, str]:
     """Extract text from images or scanned PDFs using Tesseract OCR"""
     try:
-        import pytesseract
-        from PIL import Image
+        try:
+            import pytesseract
+            from PIL import Image
+        except ImportError:
+            logger.warning("OCR dependencies (pytesseract/Pillow) not installed. Skipping OCR.")
+            return "", "ocr-unavailable"
 
         # Configure tesseract path for Windows
         if os.name == 'nt':
