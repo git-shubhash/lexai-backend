@@ -6,6 +6,7 @@ import io
 import logging
 from flask import Blueprint, request, jsonify, send_file
 from datetime import datetime
+import traceback
 
 logger = logging.getLogger(__name__)
 export_bp = Blueprint('export', __name__)
@@ -308,5 +309,5 @@ def export_pdf():
             download_name=f"{filename}_analysis.pdf"
         )
     except Exception as e:
-        logger.error(f"PDF export error: {e}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"PDF export error: {traceback.format_exc() if 'traceback' in globals() else e}")
+        return jsonify({'error': str(e), 'details': 'Ensure all special characters are Latin-1 compatible'}), 500
