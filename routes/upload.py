@@ -18,6 +18,7 @@ def allowed_file(filename: str) -> bool:
 
 
 @upload_bp.route('/upload', methods=['POST'])
+@upload_bp.route('/upload/', methods=['POST'])
 def upload_file():
     """Handle file upload - stores temporarily in memory"""
     if 'file' not in request.files:
