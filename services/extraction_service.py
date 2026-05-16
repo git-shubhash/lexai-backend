@@ -54,27 +54,38 @@ def extract_text_from_pdf(file_bytes: bytes) -> Tuple[str, str]:
     # Try OCR if text extraction failed (scanned PDF)
     if not text.strip():
         logger.info("Attempting OCR for scanned PDF")
-        text, _ = extract_text_via_ocr(file_bytes, is_pdf=True)
-        method = "ocr"
+        try:
+            text, ocr_method = extract_text_via_ocr(file_bytes, is_pdf=True)
+            if text.strip():
+                method = ocr_method
+        except Exception as ocr_err:
+            logger.warning(f"OCR fallback failed for PDF: {ocr_err}")
 
     return text, method
 
 
 def extract_text_from_docx(file_bytes: bytes) -> Tuple[str, str]:
-    """Extract text from DOCX file"""
+    """Extract text from DOCX file with merged cell handling"""
     try:
         from docx import Document
         doc = Document(io.BytesIO(file_bytes))
         paragraphs = []
 
+        # Extract from main body paragraphs
         for para in doc.paragraphs:
             if para.text.strip():
                 paragraphs.append(para.text)
 
-        # Also extract from tables
+        # Extract from tables
         for table in doc.tables:
             for row in table.rows:
-                row_text = " | ".join(cell.text for cell in row.cells if cell.text.strip())
+                # Handle merged cells by only processing unique cell objects
+                unique_cells = []
+                for cell in row.cells:
+                    if cell not in unique_cells:
+                        unique_cells.append(cell)
+                
+                row_text = " | ".join(c.text.strip() for c in unique_cells if c.text.strip())
                 if row_text:
                     paragraphs.append(row_text)
 
@@ -83,6 +94,9 @@ def extract_text_from_docx(file_bytes: bytes) -> Tuple[str, str]:
         return text, "python-docx"
     except Exception as e:
         logger.error(f"DOCX extraction failed: {e}")
+        # Return what we have so far if possible, or re-raise
+        if 'paragraphs' in locals() and paragraphs:
+            return "\n\n".join(paragraphs), "python-docx-partial"
         raise e
 
 
@@ -93,7 +107,10 @@ def extract_text_from_txt(file_bytes: bytes) -> Tuple[str, str]:
         try:
             text = file_bytes.decode('utf-8')
         except UnicodeDecodeError:
-            text = file_bytes.decode('latin-1')
+            try:
+                text = file_bytes.decode('latin-1')
+            except UnicodeDecodeError:
+                text = file_bytes.decode('utf-8', errors='ignore')
         logger.info(f"TXT extracted: {len(text)} chars")
         return text, "plain-text"
     except Exception as e:
@@ -104,12 +121,8 @@ def extract_text_from_txt(file_bytes: bytes) -> Tuple[str, str]:
 def extract_text_via_ocr(file_bytes: bytes, is_pdf: bool = False) -> Tuple[str, str]:
     """Extract text from images or scanned PDFs using Tesseract OCR"""
     try:
-        try:
-            import pytesseract
-            from PIL import Image
-        except ImportError:
-            logger.warning("OCR dependencies (pytesseract/Pillow) not installed. Skipping OCR.")
-            return "", "ocr-unavailable"
+        import pytesseract
+        from PIL import Image
 
         # Configure tesseract path for Windows
         if os.name == 'nt':
